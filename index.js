@@ -48,25 +48,19 @@ setInterval(async () => {
   }).save();
 }, [pingInterval]);
 
-const cvtDateString = (timestamp) => {
-  const date = new Date(timestamp);
-  const dateString = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-  return dateString;
-};
-
 app.get("/", async (req, res) => {
   const pingUrls = pitoBlogUrls;
   try {
     const pings = await LogModel.find({ type: "ping" })
       .sort({ timestamp: -1 })
       .limit(50);
-    const pingDates = pings.map((ping) => cvtDateString(ping.timestamp));
+    const pingDates = pings.map((ping) => ping.timestamp);
     const exceptions = await LogModel.find({ type: "exception" })
       .sort({ timestamp: -1 })
       .limit(50);
     const exceptionMessages = exceptions.map((ex) => ({
       message: ex.message,
-      timestamp: cvtDateString(ex.timestamp),
+      timestamp: ex.timestamp,
     }));
     res.setHeader("Content-Type", "application/json");
     res.end(
