@@ -69,7 +69,7 @@ setInterval(() => {
     .catch((e) => {
       saveExceptionLog(e.message);
     });
-}, 1000);
+}, 10000);
 //
 app.get("/ping", (req, res) => {
   res.send("ping me!");
