@@ -21,6 +21,23 @@ const logSchema = new mongoose.Schema({
 
 const LogModel = mongoose.model("logs", logSchema);
 
+const saveExceptionLog = (message) => {
+  return new LogModel({ type: "exception", message }).save();
+};
+const savePingLog = () => {
+  return new LogModel({
+    type: "ping",
+    timestamp: new Date().toISOString(),
+  }).save();
+};
+const savePingMeLog = (message) => {
+  return new LogModel({
+    type: "ping-me",
+    message,
+    timestamp: new Date().toISOString(),
+  }).save();
+};
+
 //
 const pitoBlogUrls = [
   "https://pitoghichep.com",
@@ -30,31 +47,52 @@ const pitoBlogUrls = [
 const pingUrls = (urls) => {
   urls.forEach((url) =>
     axios.get(url).catch((e) => {
-      new LogModel({ type: "exception", message: e.message }).save();
+      saveExceptionLog(e.message);
       console.error(`failed to ping ${url}`);
     })
   );
 };
 
 let pingInterval = 1 * 60 * 1000;
-let lastPing;
 setInterval(async () => {
   pingUrls(pitoBlogUrls);
   //
-  lastPing = new Date();
-  new LogModel({
-    type: "ping",
-    timestamp: lastPing.toISOString(),
-  }).save();
+  savePingLog();
 }, [pingInterval]);
+// ping me
+setInterval(() => {
+  axios
+    .get("https://kaffeine-eta.vercel.app/ping")
+    .then((res) => {
+      savePingMeLog(res.data);
+    })
+    .catch((e) => {
+      saveExceptionLog(e.message);
+    });
+}, 1000);
+//
+app.get("/ping", (req, res) => {
+  res.send("ping me!");
+});
 
 app.get("/", async (req, res) => {
   const pingUrls = pitoBlogUrls;
   try {
-    const pings = await LogModel.find({ type: "ping" })
+    const pings = await LogModel.find(
+      { type: "ping" },
+      { _id: 0, timestamp: 1 }
+    )
       .sort({ timestamp: -1 })
-      .limit(50);
+      .limit(10);
     const pingDates = pings.map((ping) => ping.timestamp);
+    //
+    const pingMes = await LogModel.find(
+      { type: "ping-me" },
+      { _id: 0, message: 1, timestamp: 1 }
+    )
+      .sort({ timestamp: -1 })
+      .limit(10);
+    //
     const exceptions = await LogModel.find({ type: "exception" })
       .sort({ timestamp: -1 })
       .limit(50);
@@ -70,13 +108,14 @@ app.get("/", async (req, res) => {
           pingUrls,
           pingHistory: pingDates,
           exceptions: exceptionMessages,
+          pingMeHistory: pingMes,
         },
         null,
         4
       )
     );
   } catch (e) {
-    new LogModel({ type: "exception", message: e.message }).save();
+    saveExceptionLog(e.message);
     res.status(500);
     res.json({ message: "failed to fetch ping history" });
   }
@@ -86,7 +125,7 @@ app.get("/reset", async (req, res) => {
     const result = await LogModel.deleteMany();
     res.json(result);
   } catch (e) {
-    new LogModel({ type: "exception", message: e.message }).save();
+    saveExceptionLog(e.message);
     res.status(500);
     res.json({ message: "failed to reset" });
   }
