@@ -36,7 +36,7 @@ const pingUrls = (urls) => {
   );
 };
 
-let pingInterval = 10000;
+let pingInterval = 1 * 60 * 1000;
 let lastPing;
 setInterval(async () => {
   pingUrls(pitoBlogUrls);
