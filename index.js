@@ -1,7 +1,7 @@
 const axios = require("axios");
 const express = require("express");
 const mongoose = require("mongoose");
-const moment = require("moment");
+const moment = require("moment-timezone");
 
 const app = express();
 app.use(express.json({ extended: false }));
@@ -42,16 +42,14 @@ const LogModel = {
 
 const Helper = {
   toReadableTime: (timestamp) => {
-    const diffMinutes = moment(new Date()).diff(timestamp, "minutes");
-    const result = `${diffMinutes} minute${diffMinutes > 1 ? "s" : ""} ago`;
-    return result;
+    return moment(timestamp).tz("Asia/HO_CHI_MINH").fromNow();
   },
 };
 
 // CONSTANTS
 const PORT = process.env.PORT || 3000;
 const pingUrlIn = 1 * 60 * 1000;
-const pingMeIn = 1 * 60 * 1000;
+const pingMeIn = 30 * 1000;
 const pitoBlogUrls = [
   "https://pitoghichep.com",
   "https://pitoblogapi.as.r.appspot.com",
@@ -59,10 +57,7 @@ const pitoBlogUrls = [
 
 const pingUrls = (urls) => {
   urls.forEach((url) =>
-    axios.get(url).catch((e) => {
-      LogModel.saveExceptionLog(e.message);
-      console.error(`failed to ping ${url}`);
-    })
+    axios.get(url).catch((e) => LogModel.saveExceptionLog(e.message))
   );
 };
 
@@ -83,9 +78,7 @@ setInterval(() => {
     .then((res) => {
       LogModel.savePingMeLog(res.data);
     })
-    .catch((e) => {
-      LogModel.saveExceptionLog(e.message);
-    });
+    .catch((e) => LogModel.saveExceptionLog(e.message));
 }, pingMeIn);
 //
 app.get("/ping", (req, res) => {
@@ -95,57 +88,52 @@ app.get("/ping", (req, res) => {
 // SHOW PING INFORMATION
 app.get("/", async (req, res) => {
   const pingUrls = pitoBlogUrls;
-  try {
-    const pings = await Log.find({ type: "ping" })
-      .sort({ timestamp: -1 })
-      .limit(10);
-    //
-    const pingMes = await Log.find({ type: "ping-me" })
-      .sort({ timestamp: -1 })
-      .limit(10);
-    //
-    const exceptions = await Log.find({ type: "exception" })
-      .sort({ timestamp: -1 })
-      .limit(50);
-    const exceptionMessages = exceptions.map((ex) => ({
-      message: ex.message,
-      timestamp: ex.timestamp,
-    }));
-    res.setHeader("Content-Type", "application/json");
-    res.end(
-      JSON.stringify(
-        {
-          message: "kaffeine works",
-          pingUrls,
-          pingHistory: pings.map((item) =>
-            Helper.toReadableTime(item.timestamp)
-          ),
-          exceptions: exceptionMessages,
-          pingMeHistory: pingMes.map((item) =>
-            Helper.toReadableTime(item.timestamp)
-          ),
-        },
-        null,
-        4
-      )
-    );
-  } catch (e) {
-    LogModel.saveExceptionLog(e.message);
-    res.status(500);
-    res.json({ message: "failed to fetch ping history" });
-  }
+  const pings = await Log.find({ type: "ping" })
+    .sort({ timestamp: -1 })
+    .limit(10)
+    .catch((e) => LogModel.saveExceptionLog(e.message));
+  //
+  const pingMes = await Log.find({ type: "ping-me" })
+    .sort({ timestamp: -1 })
+    .limit(10)
+    .catch((e) => LogModel.saveExceptionLog(e.message));
+
+  //
+  const exceptions = await Log.find({ type: "exception" })
+    .sort({ timestamp: -1 })
+    .limit(50)
+    .catch((e) => LogModel.saveExceptionLog(e.message));
+
+  const exceptionMessages = exceptions.map((ex) => ({
+    message: ex.message,
+    timestamp: ex.timestamp,
+  }));
+  res.setHeader("Content-Type", "application/json");
+  res.end(
+    JSON.stringify(
+      {
+        message: "kaffeine works",
+        pingUrls,
+        pingUrlTimestamps: pings.map((item) =>
+          Helper.toReadableTime(item.timestamp)
+        ),
+        pingMeTimestamps: pingMes.map((item) =>
+          Helper.toReadableTime(item.timestamp)
+        ),
+        exceptions: exceptionMessages,
+      },
+      null,
+      4
+    )
+  );
 });
 
 // RESET
 app.get("/reset", async (req, res) => {
-  try {
-    const result = await Log.deleteMany();
-    res.json(result);
-  } catch (e) {
-    LogModel.saveExceptionLog(e.message);
-    res.status(500);
-    res.json({ message: "failed to reset" });
-  }
+  const result = await Log.deleteMany().catch((e) =>
+    LogModel.saveExceptionLog(e.message)
+  );
+  res.json(result);
 });
 
 //
