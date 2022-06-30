@@ -61,7 +61,7 @@ setInterval(async () => {
 
 // PING ME
 const appUrl = process.env.PROJECT_DOMAIN
-  ? `${process.env.PROJECT_DOMAIN}.glitch.me`
+  ? `https://${process.env.PROJECT_DOMAIN}.glitch.me`
   : "http://localhost:3000";
 setInterval(() => {
   axios
