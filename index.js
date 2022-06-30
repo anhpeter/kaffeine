@@ -48,7 +48,7 @@ const Helper = {
 
 // CONSTANTS
 const PORT = process.env.PORT || 3000;
-const pingUrlIn = 1 * 60 * 1000;
+const pingUrlIn = 5 * 60 * 1000;
 const pingMeIn = 30 * 1000;
 const pitoBlogUrls = [
   "https://pitoghichep.com",
