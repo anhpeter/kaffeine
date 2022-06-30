@@ -2,16 +2,15 @@ const axios = require("axios");
 const express = require("express");
 const mongoose = require("mongoose");
 
-app = express();
+const app = express();
 app.use(express.json({ extended: false }));
 
-main().catch((err) => console.log(err));
-
-async function main() {
-  await mongoose.connect(
+// CONNECT DATABASE
+mongoose
+  .connect(
     "mongodb+srv://admin:VhN1XrRdTvwG1TJX@hobbies.ba9s98h.mongodb.net/kaffeine?retryWrites=true&w=majority"
-  );
-}
+  )
+  .catch((e) => console.error(err));
 
 const logSchema = new mongoose.Schema({
   type: String,
@@ -61,10 +60,12 @@ setInterval(async () => {
 }, [pingInterval]);
 
 // PING ME
-const appDomain = process.env.PROJECT_DOMAIN + ".glitch.me";
+const appUrl = process.env.PROJECT_DOMAIN
+  ? `${process.env.PROJECT_DOMAIN}.glitch.me`
+  : "http://localhost:3000";
 setInterval(() => {
   axios
-    .get(appDomain)
+    .get(`${appUrl}/ping`)
     .then((res) => {
       savePingMeLog(res.data);
     })
@@ -104,7 +105,7 @@ app.get("/", async (req, res) => {
           pingUrls,
           pingHistory: pings.map((item) => item.timestamp),
           exceptions: exceptionMessages,
-          pingMeHistory: pings.map((item) => item.timestamp),
+          pingMeHistory: pingMes.map((item) => item.timestamp),
         },
         null,
         4
@@ -132,6 +133,6 @@ app.get("/reset", async (req, res) => {
 //
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port http://localhost:${PORT}`);
+  console.log(`Server is running on port ${appUrl}`);
 });
 //
