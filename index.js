@@ -38,7 +38,6 @@ const savePingMeLog = (message) => {
   }).save();
 };
 
-//
 const pitoBlogUrls = [
   "https://pitoghichep.com",
   "https://pitoblogapi.as.r.appspot.com",
@@ -53,16 +52,19 @@ const pingUrls = (urls) => {
   );
 };
 
+// PING URLS
 let pingInterval = 1 * 60 * 1000;
 setInterval(async () => {
   pingUrls(pitoBlogUrls);
   //
   savePingLog();
 }, [pingInterval]);
-// ping me
+
+// PING ME
+const appDomain = process.env.PROJECT_DOMAIN + ".glitch.me";
 setInterval(() => {
   axios
-    .get("https://kaffeine-eta.vercel.app/ping")
+    .get(appDomain)
     .then((res) => {
       savePingMeLog(res.data);
     })
@@ -75,21 +77,15 @@ app.get("/ping", (req, res) => {
   res.send("ping me!");
 });
 
+// SHOW PING INFORMATION
 app.get("/", async (req, res) => {
   const pingUrls = pitoBlogUrls;
   try {
-    const pings = await LogModel.find(
-      { type: "ping" },
-      { _id: 0, timestamp: 1 }
-    )
+    const pings = await LogModel.find({ type: "ping" })
       .sort({ timestamp: -1 })
       .limit(10);
-    const pingDates = pings.map((ping) => ping.timestamp);
     //
-    const pingMes = await LogModel.find(
-      { type: "ping-me" },
-      { _id: 0, message: 1, timestamp: 1 }
-    )
+    const pingMes = await LogModel.find({ type: "ping-me" })
       .sort({ timestamp: -1 })
       .limit(10);
     //
@@ -106,9 +102,9 @@ app.get("/", async (req, res) => {
         {
           message: "kaffeine works",
           pingUrls,
-          pingHistory: pingDates,
+          pingHistory: pings.map((item) => item.timestamp),
           exceptions: exceptionMessages,
-          pingMeHistory: pingMes,
+          pingMeHistory: pings.map((item) => item.timestamp),
         },
         null,
         4
@@ -120,6 +116,8 @@ app.get("/", async (req, res) => {
     res.json({ message: "failed to fetch ping history" });
   }
 });
+
+// RESET
 app.get("/reset", async (req, res) => {
   try {
     const result = await LogModel.deleteMany();
